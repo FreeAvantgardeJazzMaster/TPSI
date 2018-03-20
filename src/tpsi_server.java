@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,8 +22,16 @@ public class tpsi_server {
             this.path = path;
         }
         public void handle(HttpExchange exchange) throws IOException {
+            URI uri = exchange.getRequestURI();
 
-            File[] listOfFiles = getListOfFiles(path);
+            String url = uri.toString().replace("/","\\");
+
+            StringBuilder urlBuilder = new StringBuilder();
+            urlBuilder.append(path);
+            urlBuilder.append(url);
+            String pathToShow = urlBuilder.toString();
+
+            File[] listOfFiles = getListOfFiles(pathToShow);
             String response = getHtml(listOfFiles);
 
             exchange.getResponseHeaders().set("Content-Type", "text/html");
