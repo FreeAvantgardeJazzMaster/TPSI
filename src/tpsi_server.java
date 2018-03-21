@@ -1,8 +1,6 @@
 import com.sun.net.httpserver.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
@@ -31,14 +29,30 @@ public class tpsi_server {
             urlBuilder.append(url);
             String pathToShow = urlBuilder.toString();
 
-            File[] listOfFiles = getListOfFiles(pathToShow);
-            String response = getHtml(listOfFiles);
+            File file = new File(pathToShow);
+            if (file.isFile()) {
+                byte[] bytes  = new byte [(int)file.length()];
+                FileInputStream fileInputStream = new FileInputStream(file);
+                BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+                bufferedInputStream.read(bytes, 0, bytes.length);
 
-            exchange.getResponseHeaders().set("Content-Type", "text/html");
-            exchange.sendResponseHeaders(200, response.length());
-            OutputStream os = exchange.getResponseBody();
-            os.write(response.getBytes());
-            os.close();
+                exchange.getResponseHeaders().set("Content-Type", "application/txt");
+                exchange.sendResponseHeaders(200, file.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(bytes, 0, bytes.length);
+                os.close();
+
+            }
+            else {
+                File[] listOfFiles = getListOfFiles(pathToShow);
+                String response = getHtml(listOfFiles);
+
+                exchange.getResponseHeaders().set("Content-Type", "text/html");
+                exchange.sendResponseHeaders(200, response.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes());
+                os.close();
+            }
         }
     }
     private static File[] getListOfFiles(String path){
