@@ -32,10 +32,7 @@ public class tpsi_server {
             File file = new File(pathToShow);
             if (file.isFile()) {
                 byte[] bytes  = new byte [(int)file.length()];
-                FileInputStream fileInputStream = new FileInputStream(file);
-                BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-                bufferedInputStream.read(bytes, 0, bytes.length);
-
+                
                 exchange.getResponseHeaders().set("Content-Type", "application/txt");
                 exchange.sendResponseHeaders(200, file.length());
                 OutputStream os = exchange.getResponseBody();
