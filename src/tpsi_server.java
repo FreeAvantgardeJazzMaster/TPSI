@@ -34,34 +34,38 @@ public class tpsi_server {
             String pathToShow = urlBuilder.toString();
 
             File file = new File(pathToShow);
-            if(file.exists()) {
-                if (file.isFile()) {
-                byte[] bytes  = new byte [(int)file.length()];
+            if(!file.getCanonicalPath().startsWith(path)){
+                exchange.sendResponseHeaders(403, -1);
+                return;
+            }
+            else {
+                if (file.exists()) {
+                    if (file.isFile()) {
+                        byte[] bytes = new byte[(int) file.length()];
 
-                exchange.getResponseHeaders().set("Content-Type", "application/txt");
-                exchange.sendResponseHeaders(200, file.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(bytes, 0, bytes.length);
-                os.close();
+                        exchange.getResponseHeaders().set("Content-Type", "application/txt");
+                        exchange.sendResponseHeaders(200, file.length());
+                        OutputStream os = exchange.getResponseBody();
+                        os.write(bytes, 0, bytes.length);
+                        os.close();
 
-                }
-                else {
-                    File[] listOfFiles = getListOfFiles(pathToShow);
-                    String response = getHtml(listOfFiles, uri.toString());
+                    } else {
+                        File[] listOfFiles = getListOfFiles(pathToShow);
+                        String response = getHtml(listOfFiles, uri.toString());
 
-                    exchange.getResponseHeaders().set("Content-Type", "text/html");
-                    exchange.sendResponseHeaders(200, response.length());
+                        exchange.getResponseHeaders().set("Content-Type", "text/html");
+                        exchange.sendResponseHeaders(200, response.length());
+                        OutputStream os = exchange.getResponseBody();
+                        os.write(response.getBytes());
+                        os.close();
+                    }
+                } else {
+                    exchange.getResponseHeaders().set("Content-Type", "text/plain");
+                    exchange.sendResponseHeaders(404, 0);
                     OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes());
+                    os.write(0);
                     os.close();
                 }
-            }
-            else{
-                exchange.getResponseHeaders().set("Content-Type", "text/plain");
-                exchange.sendResponseHeaders(404, 0);
-                OutputStream os = exchange.getResponseBody();
-                os.write(0);
-                os.close();
             }
 
         }
