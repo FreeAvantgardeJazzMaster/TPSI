@@ -3,6 +3,7 @@ import com.sun.net.httpserver.*;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -25,7 +26,6 @@ public class tpsi_server {
         }
         public void handle(HttpExchange exchange) throws IOException {
             URI uri = exchange.getRequestURI();
-
             String url = uri.toString().replace("/","\\");
 
             StringBuilder urlBuilder = new StringBuilder();
@@ -34,7 +34,8 @@ public class tpsi_server {
             String pathToShow = urlBuilder.toString();
 
             File file = new File(pathToShow);
-            if (file.isFile()) {
+            if(file.exists()) {
+                if (file.isFile()) {
                 byte[] bytes  = new byte [(int)file.length()];
 
                 exchange.getResponseHeaders().set("Content-Type", "application/txt");
@@ -43,17 +44,26 @@ public class tpsi_server {
                 os.write(bytes, 0, bytes.length);
                 os.close();
 
-            }
-            else {
-                File[] listOfFiles = getListOfFiles(pathToShow);
-                String response = getHtml(listOfFiles, uri.toString());
+                }
+                else {
+                    File[] listOfFiles = getListOfFiles(pathToShow);
+                    String response = getHtml(listOfFiles, uri.toString());
 
-                exchange.getResponseHeaders().set("Content-Type", "text/html");
-                exchange.sendResponseHeaders(200, response.length());
+                    exchange.getResponseHeaders().set("Content-Type", "text/html");
+                    exchange.sendResponseHeaders(200, response.length());
+                    OutputStream os = exchange.getResponseBody();
+                    os.write(response.getBytes());
+                    os.close();
+                }
+            }
+            else{
+                exchange.getResponseHeaders().set("Content-Type", "text/plain");
+                exchange.sendResponseHeaders(404, 0);
                 OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
+                os.write(0);
                 os.close();
             }
+
         }
     }
     private static File[] getListOfFiles(String path){
