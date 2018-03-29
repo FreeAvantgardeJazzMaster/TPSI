@@ -15,7 +15,7 @@ public class proxy{
     private static HttpServer server;
     public static void main(String[] args) throws Exception {
         int port = 8000;
-        server = HttpServer.create(new InetSocketAddress(port), 0);
+        server = HttpServer.create(new InetSocketAddress(port), 200);
         server.createContext("/", new RootHandler());
         System.out.println("Starting server on port: " + port);
         server.start();
@@ -27,7 +27,7 @@ public class proxy{
             try {
                 connection = makeConnection(exchange);
 
-                ServerResponse(exchange, connection);
+                serverResponse(exchange, connection);
 
             }catch (Exception e) {
                 e.printStackTrace();
@@ -37,7 +37,7 @@ public class proxy{
         }
         private HttpURLConnection makeConnection(HttpExchange exchange) throws Exception{
             HttpURLConnection connection = null;
-            URL requestURL = new URL(exchange.getRequestURI().toString());
+            URL requestURL = exchange.getRequestURI().toURL();
             //URL requestURL = new URL("https://google.com");
 
             connection = (HttpURLConnection) requestURL.openConnection();
@@ -54,39 +54,64 @@ public class proxy{
                         connection.setRequestProperty(headerKey, value);
                 }
             }
-
-            System.out.println("\nSending 'GET' request to URL : " + requestURL.toString());
+            if(!connection.getRequestMethod().equals("GET")){
+                connection.setDoOutput(true);
+                byte[] requestBody = getBytes(exchange.getRequestBody());
+                OutputStream os = connection.getOutputStream();
+                os.write(requestBody);
+                os.close();
+            }
+            System.out.println("\nSending request to URL : " + requestURL.toString());
             System.out.println("Response Code : " + connection.getResponseCode());
 
             return connection;
         }
         private byte[] getBytes(InputStream inputStream) throws Exception{
-            BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
+            try {
+                int nRead;
+                byte[] data = new byte[16384];
+                while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, nRead);
+                }
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            in.close();
 
-            return response.toString().getBytes();
+            return buffer.toByteArray();
         }
-        private void ServerResponse(HttpExchange exchange, HttpURLConnection connection) throws Exception{
+        private void serverResponse(HttpExchange exchange, HttpURLConnection connection){
+                byte[] bs = null;
+            try {
+                InputStream is;
+                if(connection.getResponseCode() >= 400) {
+                    is = connection.getErrorStream();
+                }
+                else {
+                    is = connection.getInputStream();
+                }
+                if(is.available() > 0)
+                    bs = getBytes(is);
 
-            byte[] bs = getBytes(connection.getInputStream());
+                Map<String, List<String>> serverHeaders = connection.getHeaderFields();
+                for (Map.Entry<String, List<String>> entry : serverHeaders.entrySet()) {
+                    if (entry.getKey() != null && !entry.getKey().equalsIgnoreCase("Transfer-Encoding"))
+                        exchange.getResponseHeaders().put(entry.getKey(), entry.getValue());
+                }
+                exchange.sendResponseHeaders(connection.getResponseCode(), ( bs != null ) ? bs.length : -1);
 
-            Map<String, List<String>> serverHeaders = connection.getHeaderFields();
-            for (Map.Entry<String, List<String>> entry : serverHeaders.entrySet()) {
-                if (entry.getKey() != null && !entry.getKey().equalsIgnoreCase("Transfer-Encoding"))
-                    exchange.getResponseHeaders().set(entry.getKey(), entry.getValue().get(0));
+                if(bs!=null) {
+                    OutputStream os = exchange.getResponseBody();
+                    os.write(bs);
+                    os.close();
+                }
             }
-
-            exchange.sendResponseHeaders(connection.getResponseCode(), bs.length);
-
-            OutputStream os = exchange.getResponseBody();
-            os.write(bs);
-            os.close();
+            catch(Exception e){
+                e.printStackTrace();
+            }
         }
         private HttpURLConnection demoConnection() throws Exception{
 
@@ -95,7 +120,7 @@ public class proxy{
             connection = (HttpURLConnection) requestURL.openConnection();
             connection.setRequestMethod("GET");
 
-            System.out.println("\nSending 'GET' request to URL : " + requestURL.toString());
+            System.out.println("\nSending request to URL : " + requestURL.toString());
             System.out.println("Response Code : " + connection.getResponseCode());
 
             return connection;
